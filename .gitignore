@@ -1,0 +1,23 @@
+# IJT Specific Output & Data
+applications/
+data/
+logs/
+
+# Sensitive Information
+.env
+.env.*
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Tooling (pytest, ruff, etc.)
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Fallback for generated documents
+*.pdf
