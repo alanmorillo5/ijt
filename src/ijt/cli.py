@@ -35,5 +35,34 @@ def status(application_folder, status):
     """Update application status."""
     click.echo(f"Updating {application_folder} to {status}...")
 
+@cli.command()
+@click.option('--preview', is_flag=True, help="Render base resume as PDF and open it")
+def resume(preview):
+    """Validate or preview base resume."""
+    from ijt.renderer.pdf import render_resume_to_pdf
+    import json
+    import subprocess
+    
+    resume_path = Path("resume.json")
+    if not resume_path.exists():
+        click.echo("Error: resume.json not found.")
+        return
+        
+    with open(resume_path, "r", encoding="utf-8") as f:
+        resume_data = json.load(f)
+        
+    click.echo("resume.json is valid.")
+    
+    if preview:
+        template_dir = Path("templates")
+        output_path = Path("resume_preview.pdf")
+        
+        click.echo("Rendering PDF preview...")
+        render_resume_to_pdf(resume_data, template_dir, output_path)
+        click.echo(f"PDF saved to {output_path}")
+        
+        # Open on macOS
+        subprocess.run(["open", str(output_path)])
+
 if __name__ == '__main__':
     cli()

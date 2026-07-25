@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ personal.name }} - Resume</title>
+    <link rel="stylesheet" href="resume.css">
+</head>
+<body>
+    <header>
+        <h1>{{ personal.name }}</h1>
+        <div class="contact-info">
+            {{ personal.email }} | {{ personal.phone }} | {{ personal.location }}<br>
+            {% if personal.linkedin %}<a href="https://{{ personal.linkedin }}">{{ personal.linkedin }}</a> | {% endif %}
+            {% if personal.github %}<a href="https://{{ personal.github }}">{{ personal.github }}</a> | {% endif %}
+            {% if personal.website %}<a href="https://{{ personal.website }}">{{ personal.website }}</a>{% endif %}
+        </div>
+    </header>
+
+    <section>
+        <h2>Education</h2>
+        {% for edu in education %}
+        <div class="item">
+            <div class="item-header">
+                <span class="title"><strong>{{ edu.institution }}</strong></span>
+                <span class="date">{{ edu.graduation }}</span>
+            </div>
+            <div class="item-sub">
+                <span>{{ edu.degree }}</span>
+                {% if edu.gpa %}<span>GPA: {{ edu.gpa }}</span>{% endif %}
+            </div>
+            {% if edu.honors %}
+            <div class="item-details">Honors: {{ edu.honors|join(', ') }}</div>
+            {% endif %}
+            {% if edu.coursework %}
+            <div class="item-details">Coursework: {{ edu.coursework|join(', ') }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </section>
+
+    <section>
+        <h2>Experience</h2>
+        {% for exp in experience %}
+        <div class="item">
+            <div class="item-header">
+                <span class="title"><strong>{{ exp.title }}</strong>, {{ exp.organization }}</span>
+                <span class="date">{{ exp.start_date }} - {{ exp.end_date }} | {{ exp.location }}</span>
+            </div>
+            {% if exp.skills_used %}
+            <div class="item-sub">Skills: {{ exp.skills_used|join(', ') }}</div>
+            {% endif %}
+            <ul class="bullets">
+                {% for bullet in exp.bullets %}
+                <li>{{ bullet }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+    </section>
+
+    <section>
+        <h2>Projects</h2>
+        {% for proj in projects %}
+        <div class="item">
+            <div class="item-header">
+                <span class="title"><strong>{{ proj.name }}</strong> | <a href="https://{{ proj.url }}">{{ proj.url }}</a></span>
+                <span class="date">{{ proj.date }}</span>
+            </div>
+            {% if proj.skills_used %}
+            <div class="item-sub">Skills: {{ proj.skills_used|join(', ') }}</div>
+            {% endif %}
+            <ul class="bullets">
+                {% for bullet in proj.bullets %}
+                <li>{{ bullet }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+    </section>
+
+    <section>
+        <h2>Skills</h2>
+        <div class="skills-grid">
+            {% if skills.languages %}<div><strong>Languages:</strong> {{ skills.languages|join(', ') }}</div>{% endif %}
+            {% if skills.frameworks %}<div><strong>Frameworks:</strong> {{ skills.frameworks|join(', ') }}</div>{% endif %}
+            {% if skills.tools %}<div><strong>Tools:</strong> {{ skills.tools|join(', ') }}</div>{% endif %}
+            {% if skills.concepts %}<div><strong>Concepts:</strong> {{ skills.concepts|join(', ') }}</div>{% endif %}
+        </div>
+    </section>
+
+    {% if activities %}
+    <section>
+        <h2>Leadership & Activities</h2>
+        {% for act in activities %}
+        <div class="item">
+            <div class="item-header">
+                <span class="title"><strong>{{ act.name }}</strong> - {{ act.role }}</span>
+                <span class="date">{{ act.dates }}</span>
+            </div>
+            {% if act.bullets %}
+            <ul class="bullets">
+                {% for bullet in act.bullets %}
+                <li>{{ bullet }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </section>
+    {% endif %}
+</body>
+</html>
