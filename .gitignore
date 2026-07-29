@@ -6,6 +6,8 @@ logs/
 # Sensitive Information
 .env
 .env.*
+resume.json
+config.yaml
 
 # Python
 .venv/

@@ -66,3 +66,44 @@ def resume(preview):
 
 if __name__ == '__main__':
     cli()
+
+@cli.command()
+@click.argument('job_file', type=click.Path(exists=True))
+def tailor(job_file):
+    """Tailor resume for a job using the provided job description file."""
+    import json
+    import asyncio
+    from ijt.config import load_config
+    from ijt.tailor.client import tailor_for_job
+    
+    click.echo(f"Tailoring resume for job in {job_file}...")
+    
+    config_path = Path("config.yaml")
+    if not config_path.exists():
+        click.echo("Error: config.yaml not found.")
+        return
+        
+    config = load_config(config_path)
+    
+    resume_path = Path("resume.json")
+    if not resume_path.exists():
+        click.echo("Error: resume.json not found.")
+        return
+        
+    with open(resume_path, "r", encoding="utf-8") as f:
+        resume_data = json.load(f)
+        
+    with open(job_file, "r", encoding="utf-8") as f:
+        job_data = json.load(f)
+        
+    # Run tailor
+    try:
+        result = asyncio.run(tailor_for_job(resume_data, job_data, config.llm))
+        
+        output_file = Path("tailored_resume.json")
+        with open(output_file, "w", encoding="utf-8") as f:
+            json.dump(result, f, indent=2)
+            
+        click.echo(f"Tailored resume saved to {output_file}")
+    except Exception as e:
+        click.echo(f"Error during tailoring: {e}")

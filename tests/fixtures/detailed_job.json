@@ -1,0 +1,5 @@
+{
+  "title": "Backend Software Engineer Intern",
+  "company": "Enterprise Software Corp",
+  "description": "We are seeking a highly motivated Backend Software Engineer Intern. Our stack relies heavily on Java and Spring Boot for microservices, and we use PostgreSQL as our primary relational database. You will also get exposure to modern CI/CD pipelines, containerization with Docker, and cloud orchestration using Kubernetes on AWS. Familiarity with Agile methodologies, Git, and writing REST APIs is essential. While not required, any experience with C++ or building distributed systems is a huge plus. We value team players who write clean, testable code and are excited to learn new concepts like gRPC and Apache Kafka."
+}

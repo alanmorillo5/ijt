@@ -1,0 +1,61 @@
+{
+  "personal": {
+    "name": "Jane Doe",
+    "email": "jane@university.edu",
+    "phone": "555-123-4567",
+    "linkedin": "linkedin.com/in/janedoe",
+    "github": "github.com/janedoe",
+    "website": "janedoe.dev",
+    "location": "Austin, TX"
+  },
+  "education": [
+    {
+      "institution": "University of Texas at Austin",
+      "degree": "B.S. Computer Science",
+      "gpa": "3.8",
+      "graduation": "May 2028",
+      "honors": ["Dean's List", "University Honors"],
+      "coursework": ["Data Structures", "Algorithms", "Operating Systems", "Databases"]
+    }
+  ],
+  "experience": [
+    {
+      "title": "Research Assistant",
+      "organization": "UT Austin CS Department",
+      "location": "Austin, TX",
+      "start_date": "Jan 2026",
+      "end_date": "Present",
+      "bullets": [
+        "Developed a Python pipeline for processing 10K+ academic papers using NLP techniques",
+        "Built a REST API with FastAPI to serve research data to 50+ graduate students",
+        "Automated data collection scripts reducing manual effort by 80%"
+      ],
+      "skills_used": ["Python", "FastAPI", "NLP", "PostgreSQL"]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Campus Event Finder",
+      "url": "github.com/janedoe/campus-events",
+      "date": "Fall 2025",
+      "bullets": [
+        "Built a full-stack web app with React and Node.js to aggregate campus events",
+        "Implemented real-time notifications using WebSockets for 200+ users"
+      ],
+      "skills_used": ["React", "Node.js", "WebSockets", "MongoDB"]
+    }
+  ],
+  "skills": {
+    "languages": ["Python", "JavaScript", "TypeScript", "Java", "C++", "SQL"],
+    "frameworks": ["React", "FastAPI", "Node.js", "Express"],
+    "tools": ["Git", "Docker", "AWS", "PostgreSQL", "MongoDB"],
+    "concepts": ["REST APIs", "CI/CD", "Agile", "Data Structures", "Algorithms"]
+  },
+  "activities": [
+    {
+      "name": "ACM Student Chapter",
+      "role": "Vice President",
+      "dates": "2025 - Present"
+    }
+  ]
+}
