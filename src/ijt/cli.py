@@ -46,7 +46,8 @@ def login(source):
         
 @cli.command()
 @click.option('--source', type=click.Choice(['linkedin', 'handshake', 'all']), default='all', help="Source to scrape")
-def scrape(source):
+@click.option('--max', 'max_jobs', type=int, help="Maximum number of jobs to scrape per source")
+def scrape(source, max_jobs):
     """Scrape job listings only (no tailoring)."""
     from ijt.config import load_config
     import json
@@ -61,20 +62,26 @@ def scrape(source):
     config = load_config(config_path)
     keywords = config.search.get("keywords", [])
     
+    if max_jobs is None:
+        max_jobs = config.search.get("max_results_per_source", 50)
+        
+    filters = dict(config.search)
+    filters["max_results_per_source"] = max_jobs
+    
     jobs = []
     
     if source in ['linkedin', 'all']:
         from ijt.scrapers.linkedin import LinkedInScraper
         session_dir = Path(config.scraper.get("linkedin", {}).get("session_dir", "data/sessions/linkedin_session"))
         scraper = LinkedInScraper(session_dir)
-        jobs.extend(asyncio.run(scraper.search(keywords, config.search)))
+        jobs.extend(asyncio.run(scraper.search(keywords, filters)))
         
     if source in ['handshake', 'all']:
         from ijt.scrapers.handshake import HandshakeScraper
         session_dir = Path(config.scraper.get("handshake", {}).get("session_dir", "data/sessions/handshake_session"))
         school_url = config.scraper.get("handshake", {}).get("school_url", "https://app.joinhandshake.com")
         scraper = HandshakeScraper(session_dir, school_url)
-        jobs.extend(asyncio.run(scraper.search(keywords, config.search)))
+        jobs.extend(asyncio.run(scraper.search(keywords, filters)))
         
     click.echo(f"Scraped {len(jobs)} jobs in total.")
     for job in jobs:

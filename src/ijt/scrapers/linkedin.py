@@ -26,14 +26,16 @@ class LinkedInScraper(BaseScraper):
             page = await context.new_page()
             
             await page.goto("https://www.linkedin.com/login")
-            logger.info("Please log in manually. Close the browser when done.")
             
-            try:
-                # Wait for the browser to be closed by the user
-                while len(context.pages) > 0:
-                    await page.wait_for_timeout(1000)
-            except Exception:
-                pass
+            print("\n" + "="*50)
+            print("🛑 ACTION REQUIRED 🛑")
+            print("1. A browser window has opened.")
+            print("2. Please log into LinkedIn manually.")
+            print("3. Return to this terminal and press ENTER when done.")
+            print("="*50 + "\n")
+            
+            import asyncio
+            await asyncio.to_thread(input, "Press ENTER here after logging in: ")
             
             self.session_dir.mkdir(parents=True, exist_ok=True)
             await context.storage_state(path=state_path)
@@ -44,6 +46,7 @@ class LinkedInScraper(BaseScraper):
         logger.info(f"Searching LinkedIn for {keywords}")
         jobs = []
         state_path = self.session_dir / "state.json"
+        max_jobs = filters.get("max_results_per_source", 50)
         
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -58,13 +61,16 @@ class LinkedInScraper(BaseScraper):
             page = await context.new_page()
             
             for keyword in keywords:
+                if len(jobs) >= max_jobs:
+                    break
+                    
                 query = urllib.parse.urlencode({'keywords': keyword})
                 await page.goto(f"https://www.linkedin.com/jobs/search/?{query}")
                 await rate_limit(3, 5)
                 
                 # Try to find some job cards (this is a simplified example)
                 job_cards = await page.locator(".job-card-container").all()
-                for card in job_cards[:5]:  # limit for demo
+                for card in job_cards[:max_jobs - len(jobs)]:
                     try:
                         title_el = card.locator(".job-card-list__title")
                         company_el = card.locator(".job-card-container__company-name")

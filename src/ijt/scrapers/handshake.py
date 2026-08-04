@@ -27,13 +27,16 @@ class HandshakeScraper(BaseScraper):
             page = await context.new_page()
             
             await page.goto(self.school_url)
-            logger.info("Please log in manually via SSO. Close the browser when done.")
             
-            try:
-                while len(context.pages) > 0:
-                    await page.wait_for_timeout(1000)
-            except Exception:
-                pass
+            print("\n" + "="*50)
+            print("🛑 ACTION REQUIRED 🛑")
+            print("1. A browser window has opened.")
+            print("2. Please log into Handshake manually.")
+            print("3. Return to this terminal and press ENTER when done.")
+            print("="*50 + "\n")
+            
+            import asyncio
+            await asyncio.to_thread(input, "Press ENTER here after logging in: ")
             
             self.session_dir.mkdir(parents=True, exist_ok=True)
             await context.storage_state(path=state_path)
@@ -44,6 +47,7 @@ class HandshakeScraper(BaseScraper):
         logger.info(f"Searching Handshake for {keywords}")
         jobs = []
         state_path = self.session_dir / "state.json"
+        max_jobs = filters.get("max_results_per_source", 50)
         
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=True)
@@ -58,6 +62,9 @@ class HandshakeScraper(BaseScraper):
             page = await context.new_page()
             
             for keyword in keywords:
+                if len(jobs) >= max_jobs:
+                    break
+                    
                 query = urllib.parse.urlencode({'query': keyword})
                 await page.goto(f"https://app.joinhandshake.com/stu/jobs?{query}")
                 await rate_limit(3, 5)
@@ -65,7 +72,7 @@ class HandshakeScraper(BaseScraper):
                 # Try to find some job cards
                 try:
                     job_cards = await page.locator(".style__job-list___11Bw- li").all()
-                    for card in job_cards[:5]:
+                    for card in job_cards[:max_jobs - len(jobs)]:
                         title_el = card.locator("h2 a")
                         company_el = card.locator(".style__employer-name___23N2M")
                         location_el = card.locator(".style__location___3gTzR")
