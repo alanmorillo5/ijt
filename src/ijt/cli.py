@@ -21,7 +21,65 @@ def init():
 @click.argument('source', type=click.Choice(['linkedin', 'handshake']))
 def login(source):
     """Open a browser to log in manually and save the session."""
+    from ijt.config import load_config
+    
     click.echo(f"Opening browser to log into {source}...")
+    config_path = Path("config.yaml")
+    config = load_config(config_path) if config_path.exists() else None
+    
+    if source == 'linkedin':
+        from ijt.scrapers.linkedin import LinkedInScraper
+        session_dir = Path("data/sessions/linkedin_session")
+        if config and hasattr(config, "scraper") and "linkedin" in config.scraper:
+            session_dir = Path(config.scraper["linkedin"].get("session_dir", session_dir))
+        scraper = LinkedInScraper(session_dir)
+        asyncio.run(scraper.login())
+    elif source == 'handshake':
+        from ijt.scrapers.handshake import HandshakeScraper
+        session_dir = Path("data/sessions/handshake_session")
+        school_url = "https://app.joinhandshake.com"
+        if config and hasattr(config, "scraper") and "handshake" in config.scraper:
+            session_dir = Path(config.scraper["handshake"].get("session_dir", session_dir))
+            school_url = config.scraper["handshake"].get("school_url", school_url)
+        scraper = HandshakeScraper(session_dir, school_url)
+        asyncio.run(scraper.login())
+        
+@cli.command()
+@click.option('--source', type=click.Choice(['linkedin', 'handshake', 'all']), default='all', help="Source to scrape")
+def scrape(source):
+    """Scrape job listings only (no tailoring)."""
+    from ijt.config import load_config
+    import json
+    import dataclasses
+    
+    click.echo(f"Scraping jobs from {source}...")
+    config_path = Path("config.yaml")
+    if not config_path.exists():
+        click.echo("Error: config.yaml not found.")
+        return
+        
+    config = load_config(config_path)
+    keywords = config.search.get("keywords", [])
+    
+    jobs = []
+    
+    if source in ['linkedin', 'all']:
+        from ijt.scrapers.linkedin import LinkedInScraper
+        session_dir = Path(config.scraper.get("linkedin", {}).get("session_dir", "data/sessions/linkedin_session"))
+        scraper = LinkedInScraper(session_dir)
+        jobs.extend(asyncio.run(scraper.search(keywords, config.search)))
+        
+    if source in ['handshake', 'all']:
+        from ijt.scrapers.handshake import HandshakeScraper
+        session_dir = Path(config.scraper.get("handshake", {}).get("session_dir", "data/sessions/handshake_session"))
+        school_url = config.scraper.get("handshake", {}).get("school_url", "https://app.joinhandshake.com")
+        scraper = HandshakeScraper(session_dir, school_url)
+        jobs.extend(asyncio.run(scraper.search(keywords, config.search)))
+        
+    click.echo(f"Scraped {len(jobs)} jobs in total.")
+    for job in jobs:
+        click.echo(f" - {job.title} at {job.company} ({job.url})")
+
 
 @cli.command()
 def list():
@@ -64,8 +122,7 @@ def resume(preview):
         # Open on macOS
         subprocess.run(["open", str(output_path)])
 
-if __name__ == '__main__':
-    cli()
+
 
 @cli.command()
 @click.argument('job_file', type=click.Path(exists=True))
@@ -107,3 +164,6 @@ def tailor(job_file):
         click.echo(f"Tailored resume saved to {output_file}")
     except Exception as e:
         click.echo(f"Error during tailoring: {e}")
+
+if __name__ == '__main__':
+    cli()
