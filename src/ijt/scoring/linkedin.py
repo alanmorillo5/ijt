@@ -12,10 +12,6 @@ def score_linkedin_regex(job: ScrapedJob, config: Any) -> ScoreResult:
     
     desc = (job.description or "").lower()
     extra_penalties = 0.0
-    
-    # LinkedIn specific patterns to penalize
-    if "sr." in job.title.lower() or "senior" in job.title.lower() or "lead" in job.title.lower():
-        extra_penalties += 2.0
         
     if "years of experience" in desc:
         # Check if they want > 3 years

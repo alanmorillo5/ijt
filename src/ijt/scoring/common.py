@@ -29,24 +29,48 @@ def evaluate_common_regex(job: ScrapedJob, config: Any, extra_penalties: float =
     score = 0.0 - extra_penalties
     matched_keywords = []
     
-    bonus_keywords = config.search.get("bonus_keywords", [])
-    for keyword in bonus_keywords:
-        if keyword.lower() in description or keyword.lower() in title:
-            score += 1.0
-            matched_keywords.append(keyword)
-        else:
-            score -= 0.5
+    def parse_keywords(cfg_value):
+        result = {}
+        if not cfg_value: return result
+        if isinstance(cfg_value, dict):
+            for k, v in cfg_value.items():
+                result[str(k).lower()] = float(v)
+        elif isinstance(cfg_value, list):
+            for item in cfg_value:
+                if isinstance(item, dict):
+                    for k, v in item.items():
+                        result[str(k).lower()] = float(v)
+                else:
+                    result[str(item).lower()] = 1.0
+        return result
+
+    # Process Bonus Keywords (+ points if found)
+    bonus_keywords = parse_keywords(config.search.get("bonus_keywords"))
+    for keyword, weight in bonus_keywords.items():
+        if keyword in description or keyword in title:
+            score += weight
+            matched_keywords.append(f"+{keyword} ({weight})")
             
+    # Process Required Keywords (- points if missing)
+    required_keywords = parse_keywords(config.search.get("required_keywords"))
+    for keyword, weight in required_keywords.items():
+        if keyword not in description and keyword not in title:
+            score -= weight
+            matched_keywords.append(f"-[missing] {keyword} (-{weight})")
+            
+    # Location matching logic
     preferred_locations = config.search.get("preferred_locations", [])
-    location_matched = False
-    for loc in preferred_locations:
-        if loc.lower() in location or loc.lower() in description:
-            score += 1.0
-            matched_keywords.append(f"Location: {loc}")
-            location_matched = True
-            break
-            
-    if preferred_locations and not location_matched:
-        score -= 0.5
+    if preferred_locations:
+        location_matched = False
+        for loc in preferred_locations:
+            if loc.lower() in location or loc.lower() in description:
+                score += 1.0
+                matched_keywords.append(f"+Location: {loc} (1.0)")
+                location_matched = True
+                break
+                
+        if not location_matched:
+            score -= 1.0
+            matched_keywords.append(f"-[missing] preferred location (-1.0)")
         
     return ScoreResult(True, score, "Eligible (Regex)", matched_keywords)
