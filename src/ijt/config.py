@@ -12,7 +12,7 @@ class Config:
 
     @property
     def scraper(self) -> dict[str, Any]:
-        return self.data.get("scraper", {})
+        return self.data.get("sources", {})
         
     @property
     def llm(self) -> dict[str, Any]:

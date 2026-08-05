@@ -72,9 +72,9 @@ class LinkedInScraper(BaseScraper):
                 job_cards = await page.locator(".job-card-container").all()
                 for card in job_cards[:max_jobs - len(jobs)]:
                     try:
-                        title_el = card.locator(".job-card-list__title")
-                        company_el = card.locator(".job-card-container__company-name")
-                        location_el = card.locator(".job-card-container__metadata-item")
+                        title_el = card.locator("a.job-card-container__link").first
+                        company_el = card.locator(".artdeco-entity-lockup__subtitle").first
+                        location_el = card.locator(".artdeco-entity-lockup__caption").first
                         
                         title = await title_el.inner_text()
                         company = await company_el.inner_text()
@@ -118,12 +118,17 @@ class LinkedInScraper(BaseScraper):
             
             # Extract details
             try:
-                title = await page.locator("h1.t-24").inner_text()
-                company = await page.locator(".jobs-unified-top-card__company-name").inner_text()
-                location = await page.locator(".jobs-unified-top-card__bullet").first.inner_text()
+                title_el = page.locator("h1")
+                title = await title_el.first.inner_text(timeout=2000) if await title_el.count() > 0 else ""
                 
-                description_el = page.locator("#job-details")
-                description = await description_el.inner_text() if await description_el.count() > 0 else ""
+                company_el = page.locator(".jobs-unified-top-card__company-name, .topcard__org-name-link")
+                company = await company_el.first.inner_text(timeout=2000) if await company_el.count() > 0 else ""
+                
+                location_el = page.locator(".jobs-unified-top-card__bullet, .topcard__flavor--bullet")
+                location = await location_el.first.inner_text(timeout=2000) if await location_el.count() > 0 else ""
+                
+                description_el = page.locator("#job-details, .description__text, .core-section-container__content")
+                description = await description_el.first.inner_text(timeout=5000) if await description_el.count() > 0 else ""
                 
                 job = ScrapedJob(
                     title=title.strip(),

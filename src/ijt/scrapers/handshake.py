@@ -16,6 +16,7 @@ class HandshakeScraper(BaseScraper):
 
     async def login(self) -> None:
         async with async_playwright() as p:
+            # Handshake uses strict Cloudflare anti-bot, so we must run headed
             browser = await p.chromium.launch(headless=False)
             
             state_path = self.session_dir / "state.json"
@@ -66,38 +67,31 @@ class HandshakeScraper(BaseScraper):
                     break
                     
                 query = urllib.parse.urlencode({'query': keyword})
-                await page.goto(f"https://app.joinhandshake.com/stu/jobs?{query}")
+                await page.goto(f"{self.school_url}/job-search?{query}")
                 await rate_limit(3, 5)
                 
-                # Try to find some job cards
+                # Extract job links directly via DOM to avoid regex issues
                 try:
-                    job_cards = await page.locator(".style__job-list___11Bw- li").all()
-                    for card in job_cards[:max_jobs - len(jobs)]:
-                        title_el = card.locator("h2 a")
-                        company_el = card.locator(".style__employer-name___23N2M")
-                        location_el = card.locator(".style__location___3gTzR")
+                    await page.wait_for_timeout(3000) # Give it time to load
+                    
+                    all_hrefs = await page.evaluate("""() => {
+                        return Array.from(document.querySelectorAll("a")).map(a => a.getAttribute("href")).filter(Boolean)
+                    }""")
+                    links = list(set([h for h in all_hrefs if "/job-search/" in h]))
+                    print("Found job links:", len(links))
+                    
+                    for link in links[:max_jobs - len(jobs)]:
+                        full_url = f"{self.school_url}{link}".split("?")[0]
                         
-                        title = await title_el.inner_text()
-                        company = await company_el.inner_text() if await company_el.count() > 0 else "Unknown"
-                        location = await location_el.inner_text() if await location_el.count() > 0 else "Unknown"
-                        href = await title_el.get_attribute("href")
-                        
-                        if href:
-                            full_url = f"https://app.joinhandshake.com{href}"
-                            full_url = full_url.split("?")[0]
-                            
-                            jobs.append(ScrapedJob(
-                                title=title.strip(),
-                                company=company.strip(),
-                                location=location.strip(),
-                                url=full_url,
-                                source=self.source,
-                                description="",
-                                posted_date=None,
-                                deadline_month=None,
-                                deadline_year=None,
-                                requirements=[]
-                            ))
+                        jobs.append(ScrapedJob(
+                            title="", # Handled in get_job_details
+                            company="",
+                            location="Unknown",
+                            url=full_url,
+                            source=self.source,
+                            description="", 
+                            posted_date=None, deadline_month=None, deadline_year=None, requirements=[]
+                        ))
                 except Exception as e:
                     logger.error(f"Error extracting Handshake jobs: {e}")
                     
@@ -107,9 +101,10 @@ class HandshakeScraper(BaseScraper):
 
     async def get_job_details(self, url: str) -> ScrapedJob:
         state_path = self.session_dir / "state.json"
+        print("Scraper State Path:", state_path, "Exists:", state_path.exists())
         
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+            browser = await p.chromium.launch(headless=False)
             context = await browser.new_context(storage_state=state_path if state_path.exists() else None)
             page = await context.new_page()
             
@@ -117,24 +112,27 @@ class HandshakeScraper(BaseScraper):
             await rate_limit(3, 5)
             
             try:
-                title = await page.locator("h1").first.inner_text()
-                company_el = page.locator(".style__employer-name___23N2M").first
-                company = await company_el.inner_text() if await company_el.count() > 0 else "Unknown"
+                title_el = page.locator("h1")
+                title = await title_el.first.inner_text(timeout=2000) if await title_el.count() > 0 else ""
                 
-                description_el = page.locator(".style__description___3Rj1N").first
-                description = await description_el.inner_text() if await description_el.count() > 0 else ""
-                
+                # Handshake usually stores the job description in a specific div or within the main element
+                desc = await page.evaluate("""() => {
+                    let jd = document.querySelector('div[data-hook="job-description"]');
+                    if (jd) return jd.innerText;
+                    
+                    let main = document.querySelector('main');
+                    if (main) return main.innerText;
+                    
+                    return document.body.innerText;
+                }""")
                 job = ScrapedJob(
                     title=title.strip(),
-                    company=company.strip(),
-                    location="Unknown",
+                    company="", 
+                    location="",
                     url=url,
                     source=self.source,
-                    description=description.strip(),
-                    posted_date=None,
-                    deadline_month=None,
-                    deadline_year=None,
-                    requirements=[]
+                    description=desc.strip(),
+                    posted_date=None, deadline_month=None, deadline_year=None, requirements=[]
                 )
             except Exception as e:
                 logger.error(f"Error getting details for {url}: {e}")
