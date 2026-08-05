@@ -70,22 +70,49 @@ def scrape(source, max_jobs):
     
     jobs = []
     
+    async def run_scraper(scraper, source_name):
+        prelim_jobs = await scraper.search(keywords, filters)
+        click.echo(f"Found {len(prelim_jobs)} preliminary jobs from {source_name}. Fetching details and scoring...")
+        
+        from ijt.scoring import score_job
+        scored_jobs = []
+        for prelim in prelim_jobs:
+            try:
+                full_job = await scraper.get_job_details(prelim.url)
+                if not full_job.title: full_job.title = prelim.title
+                if not full_job.company: full_job.company = prelim.company
+                if not full_job.location or full_job.location == "Unknown": full_job.location = prelim.location
+                
+                result = await score_job(full_job, config)
+                
+                if result.is_eligible:
+                    full_job.relevance_score = result.score
+                    full_job.matched_keywords = result.matched_keywords
+                    scored_jobs.append(full_job)
+                    click.echo(f"  [+] {full_job.company} - {full_job.title} (Score: {result.score})")
+                else:
+                    click.echo(f"  [-] Dropped {full_job.company} - {full_job.title} (Reason: {result.reason})")
+            except Exception as e:
+                click.echo(f"  [!] Error processing {prelim.url}: {e}")
+                
+        return scored_jobs
+    
     if source in ['linkedin', 'all']:
         from ijt.scrapers.linkedin import LinkedInScraper
         session_dir = Path(config.scraper.get("linkedin", {}).get("session_dir", "data/sessions/linkedin_session"))
         scraper = LinkedInScraper(session_dir)
-        jobs.extend(asyncio.run(scraper.search(keywords, filters)))
+        jobs.extend(asyncio.run(run_scraper(scraper, "linkedin")))
         
     if source in ['handshake', 'all']:
         from ijt.scrapers.handshake import HandshakeScraper
         session_dir = Path(config.scraper.get("handshake", {}).get("session_dir", "data/sessions/handshake_session"))
         school_url = config.scraper.get("handshake", {}).get("school_url", "https://app.joinhandshake.com")
         scraper = HandshakeScraper(session_dir, school_url)
-        jobs.extend(asyncio.run(scraper.search(keywords, filters)))
+        jobs.extend(asyncio.run(run_scraper(scraper, "handshake")))
         
-    click.echo(f"Scraped {len(jobs)} jobs in total.")
-    for job in jobs:
-        click.echo(f" - {job.title} at {job.company} ({job.url})")
+    click.echo(f"\nScraped {len(jobs)} eligible jobs in total.")
+    for job in sorted(jobs, key=lambda j: j.relevance_score, reverse=True):
+        click.echo(f" - {job.title} at {job.company} (Score: {job.relevance_score})")
 
 
 @cli.command()

@@ -14,6 +14,12 @@ class ScrapedJob:
     deadline_month: int | None  # 1-12, None if not listed
     deadline_year: int | None   # e.g., 2026, None if not listed
     requirements: list[str]  # Extracted requirements/qualifications
+    relevance_score: float = 0.0
+    matched_keywords: list[str] = None
+
+    def __post_init__(self):
+        if self.matched_keywords is None:
+            self.matched_keywords = []
 
 class BaseScraper(ABC):
     """Abstract base class for all job scrapers."""
