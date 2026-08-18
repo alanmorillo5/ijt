@@ -130,13 +130,17 @@ class LinkedInScraper(BaseScraper):
                 description_el = page.locator("#job-details, .description__text, .core-section-container__content")
                 description = await description_el.first.inner_text(timeout=5000) if await description_el.count() > 0 else ""
                 
+                # Truncate boilerplate "About the company" if it was included in the description text
+                desc_clean = description.split("About the company")[0].split("About the Company")[0]
+                desc_clean = desc_clean.split("About Us")[0].split("About us")[0]
+                
                 job = ScrapedJob(
                     title=title.strip(),
                     company=company.strip(),
                     location=location.strip(),
                     url=url,
                     source=self.source,
-                    description=description.strip(),
+                    description=desc_clean.strip(),
                     posted_date=None,
                     deadline_month=None,
                     deadline_year=None,

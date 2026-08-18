@@ -173,13 +173,18 @@ class HandshakeScraper(BaseScraper):
                     
                     return document.body.innerText;
                 }""")
+                
+                # Truncate text to remove noise from employer info and similar jobs
+                desc_clean = desc.split("Similar jobs")[0].split("Similar Jobs")[0]
+                desc_clean = desc_clean.split("About the employer")[0].split("About the Employer")[0]
+                
                 job = ScrapedJob(
                     title="", # Will be filled by CLI from prelim
                     company="", 
                     location="",
                     url=url,
                     source=self.source,
-                    description=desc.strip(),
+                    description=desc_clean.strip(),
                     posted_date=None, deadline_month=None, deadline_year=None, requirements=[]
                 )
             except Exception as e:
