@@ -14,7 +14,6 @@ async def ollama_chat(messages: list[dict], config: dict) -> str:
         "model": config.get("model", "qwen3.6:27b-q8_0"),
         "messages": messages,
         "stream": False,
-        "format": "json",
         "options": {
             "temperature": config.get("temperature", 0.3),
             "num_predict": config.get("max_tokens", 4096),
@@ -27,7 +26,13 @@ async def ollama_chat(messages: list[dict], config: dict) -> str:
         response = await client.post(url, json=payload)
         response.raise_for_status()
         data = response.json()
-        return data["message"]["content"]
+        content = data["message"]["content"]
+        
+        # Clean up output: remove reasoning blocks and markdown code fences
+        import re
+        content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+        content = re.sub(r'^```json\s*|```\s*$', '', content.strip(), flags=re.MULTILINE)
+        return content.strip()
 
 async def tailor_for_job(resume_json: dict, job_dict: dict, llm_config: dict) -> dict:
     """Tailor resume for a single job. Fresh session per call."""

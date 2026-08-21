@@ -1,0 +1,9 @@
+{
+  "title": "Software Engineering Intern, Backend (Summer 2026)",
+  "company": "Stripe",
+  "location": "Seattle, WA",
+  "description": "We are looking for a backend software engineering intern. You will work on distributed systems, building REST APIs in Python and Ruby. Experience with AWS and SQL databases is preferred. Strong knowledge of data structures and algorithms is required. Must be pursuing a BS in Computer Science.",
+  "source": "linkedin",
+  "url": "https://example.com/job",
+  "requirements": ["Python", "REST APIs", "AWS", "SQL"]
+}
