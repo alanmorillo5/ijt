@@ -114,6 +114,65 @@ def scrape(source, max_jobs):
     for job in sorted(jobs, key=lambda j: j.relevance_score, reverse=True):
         click.echo(f" - {job.title} at {job.company} (Score: {job.relevance_score})")
 
+@cli.command()
+@click.option('--source', type=click.Choice(['linkedin', 'handshake', 'all']), default='all', help="Source to scrape")
+@click.option('--max', 'max_jobs', type=int, help="Maximum number of jobs to scrape per source")
+def run(source, max_jobs):
+    """Full pipeline: scrape → tailor → save."""
+    from ijt.config import load_config
+    import json
+    from ijt.pipeline import run_pipeline
+    from ijt.db.store import get_db_connection
+    
+    click.echo("Starting full IJT pipeline...")
+    config_path = Path("config.yaml")
+    if not config_path.exists():
+        click.echo("Error: config.yaml not found.")
+        return
+        
+    resume_path = Path("resume.json")
+    if not resume_path.exists():
+        click.echo("Error: resume.json not found.")
+        return
+        
+    config = load_config(config_path)
+    with open(resume_path, "r", encoding="utf-8") as f:
+        resume_data = json.load(f)
+        
+    db_path = Path("data/ijt.db")
+    
+    async def _run():
+        db = await get_db_connection(db_path)
+        try:
+            sources = ['linkedin', 'handshake'] if source == 'all' else [source]
+            await run_pipeline(config, resume_data, db, sources, max_jobs)
+        finally:
+            await db.close()
+            
+    asyncio.run(_run())
+
+@cli.command()
+@click.argument('application_folder')
+def open(application_folder):
+    """Open an application folder in Finder."""
+    import subprocess
+    from ijt.config import load_config
+    
+    config_path = Path("config.yaml")
+    apps_dir = Path("applications")
+    if config_path.exists():
+        config = load_config(config_path)
+        if hasattr(config, "output") and "applications_dir" in config.output:
+            apps_dir = Path(config.output["applications_dir"])
+            
+    target_path = apps_dir / application_folder
+    
+    if not target_path.exists():
+        click.echo(f"Error: Application folder '{target_path}' does not exist.")
+        return
+        
+    click.echo(f"Opening {target_path} in Finder...")
+    subprocess.run(["open", str(target_path)])
 
 @cli.command()
 def list():
