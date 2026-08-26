@@ -1,18 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>{{ personal.name }} - Resume</title>
     <link rel="stylesheet" href="resume.css">
 </head>
+
 <body>
     <header>
         <h1>{{ personal.name }}</h1>
         <div class="contact-info">
-            {{ personal.email }} | {{ personal.phone }} | {{ personal.location }}<br>
-            {% if personal.linkedin %}<a href="https://{{ personal.linkedin }}">{{ personal.linkedin }}</a> | {% endif %}
-            {% if personal.github %}<a href="https://{{ personal.github }}">{{ personal.github }}</a> | {% endif %}
-            {% if personal.website %}<a href="https://{{ personal.website }}">{{ personal.website }}</a>{% endif %}
+            US Citizen | {{ personal.location }} | {{ personal.email }} | {{ personal.phone }}
+            {% if personal.linkedin %}| <a href="https://{{ personal.linkedin }}">LinkedIn: {{ personal.name }}</a>
+            {% endif %}
+            {% if personal.github %}| <a href="https://github.com/{{ personal.github }}">GitHub: {{personal.github}}</a>
+            {% endif %}
+            {% if personal.website %} | <a href="https://{{ personal.website }}">Website: {{personal.website}}</a>
+            {% endif %}
         </div>
     </header>
 
@@ -63,7 +68,7 @@
         {% for proj in projects %}
         <div class="item">
             <div class="item-header">
-                <span class="title"><strong>{{ proj.name }}</strong> | <a href="https://{{ proj.url }}">{{ proj.url }}</a></span>
+                <span class="title"><strong>{{ proj.name }}</strong></span>
                 <span class="date">{{ proj.date }}</span>
             </div>
             {% if proj.skills_used %}
@@ -82,7 +87,8 @@
         <h2>Skills</h2>
         <div class="skills-grid">
             {% if skills.languages %}<div><strong>Languages:</strong> {{ skills.languages|join(', ') }}</div>{% endif %}
-            {% if skills.frameworks %}<div><strong>Frameworks:</strong> {{ skills.frameworks|join(', ') }}</div>{% endif %}
+            {% if skills.frameworks %}<div><strong>Frameworks:</strong> {{ skills.frameworks|join(', ') }}</div>{% endif
+            %}
             {% if skills.tools %}<div><strong>Tools:</strong> {{ skills.tools|join(', ') }}</div>{% endif %}
             {% if skills.concepts %}<div><strong>Concepts:</strong> {{ skills.concepts|join(', ') }}</div>{% endif %}
         </div>
@@ -109,4 +115,5 @@
     </section>
     {% endif %}
 </body>
+
 </html>
