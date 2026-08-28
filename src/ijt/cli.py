@@ -151,9 +151,9 @@ def run(source, max_jobs):
             
     asyncio.run(_run())
 
-@cli.command()
+@cli.command(name="open")
 @click.argument('application_folder')
-def open(application_folder):
+def open_cmd(application_folder):
     """Open an application folder in Finder."""
     import subprocess
     from ijt.config import load_config
@@ -174,8 +174,8 @@ def open(application_folder):
     click.echo(f"Opening {target_path} in Finder...")
     subprocess.run(["open", str(target_path)])
 
-@cli.command()
-def list():
+@cli.command(name="list")
+def list_cmd():
     """List all tracked applications with status."""
     click.echo("Listing tracked applications...")
 
