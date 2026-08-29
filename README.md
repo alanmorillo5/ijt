@@ -44,51 +44,40 @@ uv run ijt login linkedin
 uv run ijt login handshake
 ```
 
-## Configuration & Scoring System
-
-IJT features a powerful filtering and ranking engine configured in `config.yaml`. 
-
-```yaml
-search:
-  scoring_engine: "regex" # Fast local text matching, or use "llm" for deep contextual evaluation
-  keywords:
-    - "software engineer intern"
-  
-  # Strict Requirements (Knock-Outs): Jobs violating these are instantly discarded.
-  eligibility_filters:
-    graduation_year: 2028
-    graduation_year_variance: 1 # Will accept graduation dates between 2027 and 2029
-    major: "Computer Science"
-    must_be_internship: true
-    
-  # Soft Requirements (Scoring): Adds +1.0 point for matches, deducts -0.5 points for misses.
-  bonus_keywords:
-    - "software"
-    - "cloud"
-    - "react"
-    - "python"
-  preferred_locations:
-    - "Austin, TX"
-    - "Remote"
-```
-
 ## Usage
 
-### Scraping Jobs
-Scrape jobs, automatically fetch full descriptions, and filter/score them based on your `config.yaml`.
+### Full Pipeline (Scrape + Tailor)
+Run the full orchestration pipeline. This command scrapes jobs, scores them against your criteria, tailors a resume using Ollama, and renders PDFs for you to submit.
 ```bash
-# Scrape from both LinkedIn and Handshake using config limits
-uv run ijt scrape
-
-# Scrape from a specific source with a custom limit
-uv run ijt scrape --source linkedin --max 10
-uv run ijt scrape --source handshake --max 5
+uv run ijt run
+uv run ijt run --dry-run   # Preview matches without saving to disk or DB
 ```
 
-### Tailoring Resumes
-Tailor your base resume (`resume.json`) for a specific job using the local LLM. It verifies the output schema and handles retries automatically.
+### Scraping Jobs Only
+Scrape jobs, automatically fetch full descriptions, and filter/score them based on your `config.yaml`.
 ```bash
-uv run ijt tailor path/to/job_file.json
+uv run ijt scrape
+uv run ijt scrape --source linkedin --max 10
+```
+
+### Application Tracking
+Track your job applications locally in the SQLite database.
+```bash
+# View tracked applications as a rich table
+uv run ijt list
+
+# Sort applications by deadline or relevance score
+uv run ijt list --sort relevance
+uv run ijt list --sort deadline
+
+# Filter applications
+uv run ijt list --status not_applied
+
+# Update an application's status
+uv run ijt status Google_SWE_Intern_2026 applied
+
+# Open application folder in Finder
+uv run ijt open Google_SWE_Intern_2026
 ```
 
 ### Previewing Resumes
@@ -97,14 +86,9 @@ Render your base resume into an ATS-friendly PDF and open it immediately for pre
 uv run ijt resume --preview
 ```
 
-### Application Tracking (Basics)
-```bash
-# View tracked applications
-uv run ijt list
-
-# Update an application's status
-uv run ijt status Google_SWE_Intern_2026 applied
-```
+## Resiliency Features
+- **Network Retries**: Built-in exponential backoff for Playwright operations if pages fail to load or timeout.
+- **LLM Validation**: The LLM output is strictly validated against the `resume.json` schema. If it hallucinates structural changes or invalid JSON, IJT will automatically issue corrective prompts and retry (up to 3 times).
 
 ## Security Note
 **Never** commit your `data/sessions/` folder to git, as it contains sensitive authentication cookies.

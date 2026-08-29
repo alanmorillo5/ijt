@@ -105,6 +105,8 @@ class LinkedInScraper(BaseScraper):
             
         return jobs
 
+    from ijt.scrapers.utils import retry_async
+    @retry_async(max_retries=3)
     async def get_job_details(self, url: str) -> ScrapedJob:
         state_path = self.session_dir / "state.json"
         

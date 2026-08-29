@@ -25,7 +25,7 @@ def get_folder_name(job) -> str:
     year = job.deadline_year if job.deadline_year else datetime.now().year
     return f"{company_clean}_{title_clean}_{year}"
 
-async def run_pipeline(config, resume_data, db, sources: list[str], max_jobs: int = None):
+async def run_pipeline(config, resume_data, db, sources: list[str], max_jobs: int = None, dry_run: bool = False):
     logger = get_logger("pipeline")
     logger.info("Starting pipeline run")
 
@@ -131,6 +131,12 @@ async def run_pipeline(config, resume_data, db, sources: list[str], max_jobs: in
             logger.info(f"Tailoring for: {job.company} - {job.title}", extra={"job_id": job_id})
             
             try:
+                if dry_run:
+                    console.print(f"[yellow][DRY RUN][/yellow] Would tailor and save application for {job.company} - {job.title}")
+                    successes += 1
+                    progress.advance(task)
+                    continue
+
                 # Fresh LLM session per job
                 # Ensure job is a dictionary for tailor_for_job since it expects job_data
                 from dataclasses import asdict

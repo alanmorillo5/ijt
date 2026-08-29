@@ -117,14 +117,18 @@ def scrape(source, max_jobs):
 @cli.command()
 @click.option('--source', type=click.Choice(['linkedin', 'handshake', 'all']), default='all', help="Source to scrape")
 @click.option('--max', 'max_jobs', type=int, help="Maximum number of jobs to scrape per source")
-def run(source, max_jobs):
+@click.option('--dry-run', is_flag=True, help="Preview without saving")
+def run(source, max_jobs, dry_run):
     """Full pipeline: scrape → tailor → save."""
     from ijt.config import load_config
     import json
     from ijt.pipeline import run_pipeline
     from ijt.db.store import get_db_connection
     
-    click.echo("Starting full IJT pipeline...")
+    if dry_run:
+        click.echo("Starting full IJT pipeline in DRY RUN mode...")
+    else:
+        click.echo("Starting full IJT pipeline...")
     config_path = Path("config.yaml")
     if not config_path.exists():
         click.echo("Error: config.yaml not found.")
@@ -145,7 +149,7 @@ def run(source, max_jobs):
         db = await get_db_connection(db_path)
         try:
             sources = ['linkedin', 'handshake'] if source == 'all' else [source]
-            await run_pipeline(config, resume_data, db, sources, max_jobs)
+            await run_pipeline(config, resume_data, db, sources, max_jobs, dry_run=dry_run)
         finally:
             await db.close()
             
@@ -175,9 +179,73 @@ def open_cmd(application_folder):
     subprocess.run(["open", str(target_path)])
 
 @cli.command(name="list")
-def list_cmd():
+@click.option('--sort', type=click.Choice(['deadline', 'relevance']), default='deadline', help="Sort order")
+@click.option('--status', 'filter_status', help="Filter by status (e.g., not_applied)")
+def list_cmd(sort, filter_status):
     """List all tracked applications with status."""
-    click.echo("Listing tracked applications...")
+    import asyncio
+    from rich.console import Console
+    from rich.table import Table
+    from ijt.db.store import get_db_connection
+    from pathlib import Path
+
+    async def _list():
+        db_path = Path("data/ijt.db")
+        if not db_path.exists():
+            click.echo("No database found. Have you run the pipeline yet?")
+            return
+
+        db = await get_db_connection(db_path)
+        try:
+            query = "SELECT company, title, status, deadline_year, deadline_month, relevance_score, folder_name FROM jobs"
+            params = []
+            if filter_status:
+                query += " WHERE status = ?"
+                params.append(filter_status)
+            
+            if sort == 'relevance':
+                query += " ORDER BY relevance_score DESC"
+            else:
+                query += " ORDER BY CASE WHEN deadline_year IS NULL THEN 1 ELSE 0 END, deadline_year ASC, deadline_month ASC"
+
+            async with db.execute(query, params) as cursor:
+                rows = await cursor.fetchall()
+
+            if not rows:
+                click.echo("No jobs found.")
+                return
+
+            console = Console()
+            table = Table(title="IJT Tracked Applications")
+
+            table.add_column("Company", style="cyan")
+            table.add_column("Title", style="magenta")
+            table.add_column("Status", style="green")
+            table.add_column("Deadline", justify="right")
+            table.add_column("Score", justify="right", style="yellow")
+            table.add_column("Folder")
+
+            for row in rows:
+                company, title, job_status, year, month, score, folder = row
+                
+                if year and month:
+                    deadline_str = f"{year}-{month:02d}"
+                elif year:
+                    deadline_str = f"{year}"
+                else:
+                    deadline_str = "Unknown"
+
+                score_str = f"{score:.2f}" if score is not None else "N/A"
+                
+                table.add_row(
+                    company, title, job_status, deadline_str, score_str, folder or ""
+                )
+            
+            console.print(table)
+        finally:
+            await db.close()
+
+    asyncio.run(_list())
 
 @cli.command()
 @click.argument('application_folder')

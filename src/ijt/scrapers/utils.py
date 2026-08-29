@@ -37,3 +37,28 @@ async def mark_url_seen(db_path: Path, url: str, source: str):
         await db.commit()
     finally:
         await db.close()
+
+import functools
+import logging
+
+def retry_async(max_retries=3, backoff_factor=1.5, exceptions=(Exception,)):
+    """Retry an async function on failure with exponential backoff."""
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            import asyncio
+            attempt = 1
+            delay = 2.0
+            while attempt <= max_retries:
+                try:
+                    return await func(*args, **kwargs)
+                except exceptions as e:
+                    if attempt == max_retries:
+                        logging.getLogger("ijt.scrapers.utils").error(f"Function {func.__name__} failed after {max_retries} attempts: {e}")
+                        raise
+                    logging.getLogger("ijt.scrapers.utils").warning(f"Function {func.__name__} failed on attempt {attempt}: {e}. Retrying in {delay}s...")
+                    await asyncio.sleep(delay)
+                    delay *= backoff_factor
+                    attempt += 1
+        return wrapper
+    return decorator
