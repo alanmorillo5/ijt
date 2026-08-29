@@ -1,0 +1,50 @@
+search:
+      # Choose between "regex" (fast, local matching) or "llm" (Ollama parses the description)
+      scoring_engine: "regex" 
+
+      # The raw search terms entered into the LinkedIn/Handshake search bars
+      keywords:
+        - "software engineer intern"
+        
+      # How long to wait (in seconds) for a user to manually solve a Cloudflare challenge
+      cloudflare_wait_timeout: 120
+      
+      # High Priority / Knock-Out Rules 
+      # If a job violates these, it gets dropped immediately.
+      eligibility_filters:
+        major: "Computer Science"     # Requires CS or related BS degree
+        must_be_internship: true      # Excludes full-time/senior roles
+        
+      # Additive only. Adds points if found in description or title.
+      bonus_keywords:
+        - "software"
+        - "cloud"
+        - "react"
+        - "python": 1.5
+        - "undergrad"
+        - "undergraduate"
+        
+      # Subtractive only. Subtracts points if MISSING from description or title.
+      required_keywords:
+        - "computer science"
+        - "bachelor": 0.5
+        
+      preferred_locations:
+        - "San Francisco, CA"
+        - "Remote"
+        
+      # Limits how many jobs to scrape per source before applying the eligibility filters
+      max_results_per_source: 20
+sources:
+      handshake:
+        school_url: "https://university.joinhandshake.com"
+
+llm:
+  model: "qwen3.6:27b-q8_0"
+  ollama_host: "http://localhost:11434"
+  temperature: 0.3                      # low temp for consistent resume writing
+  max_tokens: 4096
+
+output:
+  applications_dir: "./applications"
+  database_path: "./data/ijt.db"
