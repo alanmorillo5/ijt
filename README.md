@@ -23,9 +23,9 @@ IJT uses Playwright to scrape job postings from LinkedIn and Handshake, evaluate
    ```
 
 3. **Pull the Local LLM Model**:
-   *Make sure the Ollama app is running, then download the model (Warning: ~32GB).*
+   *Make sure the Ollama app is running, then download the model (Warning: ~16GB).*
    ```bash
-   ollama pull qwen3.6:27b-q8_0
+   ollama pull qwen3.8:27b-mtp-q4_K_M
    ```
 
 4. **Initialize the Project**:
@@ -33,6 +33,10 @@ IJT uses Playwright to scrape job postings from LinkedIn and Handshake, evaluate
    uv run ijt init
    ```
    *This sets up the SQLite database at `data/ijt.db`.*
+
+5. **Configure your Pipeline**:
+   Update `config.yaml` with your school Handshake URL, target job titles, and locations. 
+   *(Note: To avoid git branch conflicts with your personal settings, it's recommended to stop tracking your config file: `git rm --cached config.yaml`)*
 
 ## Authentication
 
