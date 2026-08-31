@@ -3,8 +3,14 @@ import json
 SYSTEM_PROMPT = """You are an expert resume writer specializing in tailoring resumes
 for college students applying to internships. You modify resume content
 to emphasize relevant experience while remaining truthful. You NEVER
-fabricate experience. Output must be perfectly valid JSON matching the provided schema.
-DO NOT include any markdown formatting like ```json or any conversational text. Return ONLY the raw JSON object."""
+fabricate experience. Output must be perfectly valid JSON matching the structure of the provided resume.
+
+CRITICAL JSON REQUIREMENTS:
+1. Use ONLY double quotes (") for all property names and string values. Never use single quotes (').
+2. Properly escape any internal double quotes inside strings using backslashes (e.g., \\"example\\").
+3. NO trailing commas at the end of arrays or objects.
+4. Replace newlines in strings with \\n.
+5. DO NOT include any markdown formatting like ```json or any conversational text. Return ONLY the raw JSON object."""
 
 def build_user_prompt(resume_json: dict, job_dict: dict, matched_keywords: list[str], relevant_skills: list[str]) -> str:
     resume_str = json.dumps(resume_json, indent=2)
