@@ -61,6 +61,8 @@ async def _score_with_llm(job: ScrapedJob, config: Any) -> ScoreResult:
         )
         if eligibility.get("must_be_internship"):
             system_prompt += "- Must be an internship\n"
+        if eligibility.get("internship_year"):
+            system_prompt += f"- Title or Description MUST explicitly include the year {eligibility.get('internship_year')}\n"
         if eligibility.get("graduation_year"):
             y = eligibility.get("graduation_year")
             v = eligibility.get("graduation_year_variance", 0)
@@ -73,6 +75,9 @@ async def _score_with_llm(job: ScrapedJob, config: Any) -> ScoreResult:
             f"- Keywords: {', '.join(bonus)}\n"
             f"- Locations: {', '.join(locations)}\n"
         )
+        if eligibility.get("internship_season"):
+            season = eligibility.get("internship_season")
+            system_prompt += f"- BONUS: +2 if title or description explicitly includes the season '{season}'\n"
 
         user_prompt = f"Title: {job.title}\nLocation: {job.location}\n\nDescription:\n{job.description}"
 

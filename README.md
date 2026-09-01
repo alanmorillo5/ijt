@@ -35,7 +35,7 @@ IJT uses Playwright to scrape job postings from LinkedIn and Handshake, evaluate
    *This sets up the SQLite database at `data/ijt.db`.*
 
 5. **Configure your Pipeline**:
-   Update `config.yaml` with your school Handshake URL, target job titles, and locations. 
+   Update `config.yaml` with your school Handshake URL, target job titles, locations, and advanced eligibility filters like `internship_year` (e.g., 2027) and `internship_season` (e.g., "Summer"). 
    *(Note: To avoid git branch conflicts with your personal settings, it's recommended to stop tracking your config file: `git rm --cached config.yaml`)*
 
 ## Authentication
@@ -82,6 +82,9 @@ uv run ijt status Google_SWE_Intern_2026 applied
 
 # Open application folder in Finder
 uv run ijt open Google_SWE_Intern_2026
+
+# Remove unapplied applications from DB and delete their folders
+uv run ijt prune
 ```
 
 ### Previewing Resumes

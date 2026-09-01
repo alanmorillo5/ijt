@@ -16,6 +16,11 @@ def evaluate_common_regex(job: ScrapedJob, config: Any, extra_penalties: float =
         if "intern" not in title and "intern" not in description:
             return ScoreResult(False, 0.0, "Missing 'intern' in title/description", [])
             
+    internship_year = eligibility.get("internship_year")
+    if internship_year:
+        if str(internship_year) not in title and str(internship_year) not in description:
+            return ScoreResult(False, 0.0, f"Missing internship year {internship_year} in title or description", [])
+            
     grad_year = eligibility.get("graduation_year")
     variance = eligibility.get("graduation_year_variance", 0)
     if grad_year:
@@ -50,6 +55,12 @@ def evaluate_common_regex(job: ScrapedJob, config: Any, extra_penalties: float =
         if keyword in description or keyword in title:
             score += weight
             matched_keywords.append(f"+{keyword} ({weight})")
+            
+    internship_season = eligibility.get("internship_season")
+    if internship_season:
+        if str(internship_season).lower() in title or str(internship_season).lower() in description:
+            score += 2.0
+            matched_keywords.append(f"+Season: {internship_season} (2.0)")
             
     # Process Required Keywords (- points if missing)
     required_keywords = parse_keywords(config.search.get("required_keywords"))

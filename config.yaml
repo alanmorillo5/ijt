@@ -14,6 +14,8 @@ search:
       eligibility_filters:
         major: "Computer Science"     # Requires CS or related BS degree
         must_be_internship: true      # Excludes full-time/senior roles
+        internship_year: 2027         # Title or description must include this year
+        internship_season: "Summer"   # Bonus if title or description includes this season
         
       # Additive only. Adds points if found in description or title.
       bonus_keywords:

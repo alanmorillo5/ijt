@@ -252,7 +252,33 @@ def list_cmd(sort, filter_status):
 @click.argument('status')
 def status(application_folder, status):
     """Update application status."""
-    click.echo(f"Updating {application_folder} to {status}...")
+    import asyncio
+    from pathlib import Path
+    from ijt.db.store import get_db_connection
+
+    async def _update():
+        db_path = Path("data/ijt.db")
+        if not db_path.exists():
+            click.echo("No database found.")
+            return
+
+        db = await get_db_connection(db_path)
+        try:
+            async with db.execute("SELECT id FROM jobs WHERE folder_name = ?", (application_folder,)) as cursor:
+                row = await cursor.fetchone()
+                
+            if not row:
+                click.echo(f"Error: Application folder '{application_folder}' not found in database.")
+                return
+                
+            job_id = row[0]
+            await db.execute("UPDATE jobs SET status = ? WHERE id = ?", (status, job_id))
+            await db.commit()
+            click.echo(f"Successfully updated '{application_folder}' status to '{status}'.")
+        finally:
+            await db.close()
+
+    asyncio.run(_update())
 
 @cli.command()
 @click.option('--preview', is_flag=True, help="Render base resume as PDF and open it")
@@ -325,6 +351,59 @@ def tailor(job_file):
         click.echo(f"Tailored resume saved to {output_file}")
     except Exception as e:
         click.echo(f"Error during tailoring: {e}")
+
+@cli.command()
+def prune():
+    """Remove unapplied application data and DB records (keeps URL in seen to prevent rescrape)."""
+    import asyncio
+    import shutil
+    from pathlib import Path
+    from ijt.config import load_config
+    from ijt.db.store import get_db_connection
+
+    async def _prune():
+        config_path = Path("config.yaml")
+        apps_dir = Path("applications")
+        if config_path.exists():
+            config = load_config(config_path)
+            if hasattr(config, "output") and "applications_dir" in config.output:
+                apps_dir = Path(config.output["applications_dir"])
+
+        db_path = Path("data/ijt.db")
+        if not db_path.exists():
+            click.echo("No database found.")
+            return
+
+        db = await get_db_connection(db_path)
+        try:
+            # Get all jobs with status = 'not_applied'
+            async with db.execute("SELECT id, folder_name FROM jobs WHERE status = 'not_applied'") as cursor:
+                rows = await cursor.fetchall()
+            
+            if not rows:
+                click.echo("No unapplied applications found.")
+                return
+                
+            click.echo(f"Found {len(rows)} unapplied applications to remove.")
+            
+            count = 0
+            for job_id, folder_name in rows:
+                # Remove folder
+                if folder_name:
+                    target_path = apps_dir / folder_name
+                    if target_path.exists() and target_path.is_dir():
+                        shutil.rmtree(target_path)
+                        
+                # Remove from jobs table (but not seen_urls)
+                await db.execute("DELETE FROM jobs WHERE id = ?", (job_id,))
+                count += 1
+                
+            await db.commit()
+            click.echo(f"Successfully pruned {count} applications.")
+        finally:
+            await db.close()
+            
+    asyncio.run(_prune())
 
 if __name__ == '__main__':
     cli()
