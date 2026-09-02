@@ -16,6 +16,10 @@ def evaluate_common_regex(job: ScrapedJob, config: Any, extra_penalties: float =
         if "intern" not in title and "intern" not in description:
             return ScoreResult(False, 0.0, "Missing 'intern' in title/description", [])
             
+    if eligibility.get("filter_part_time", True):
+        if "part-time" in title or "part time" in title or "part-time" in description or "part time" in description:
+            return ScoreResult(False, 0.0, "Is a part-time job", [])
+            
     internship_year = eligibility.get("internship_year")
     if internship_year:
         if str(internship_year) not in title and str(internship_year) not in description:

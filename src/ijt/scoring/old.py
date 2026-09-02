@@ -43,6 +43,10 @@ def _score_with_regex(job: ScrapedJob, config: Any) -> ScoreResult:
         if "intern" not in title and "intern" not in description:
             return ScoreResult(False, 0.0, "Missing 'intern' in title/description", [])
             
+    if eligibility.get("filter_part_time", True):
+        if "part-time" in title or "part time" in title or "part-time" in description or "part time" in description:
+            return ScoreResult(False, 0.0, "Is a part-time job", [])
+            
     # Check major explicitly if mentioned
     major = eligibility.get("major", "").lower()
     if major:
@@ -116,6 +120,8 @@ async def _score_with_llm(job: ScrapedJob, config: Any) -> ScoreResult:
         )
         if eligibility.get("must_be_internship"):
             system_prompt += "- Must be an internship\n"
+        if eligibility.get("filter_part_time", True):
+            system_prompt += "- Must NOT be a part-time job\n"
         if eligibility.get("graduation_year"):
             y = eligibility.get("graduation_year")
             v = eligibility.get("graduation_year_variance", 0)

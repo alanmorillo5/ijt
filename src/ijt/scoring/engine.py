@@ -61,6 +61,8 @@ async def _score_with_llm(job: ScrapedJob, config: Any) -> ScoreResult:
         )
         if eligibility.get("must_be_internship"):
             system_prompt += "- Must be an internship\n"
+        if eligibility.get("filter_part_time", True):
+            system_prompt += "- Must NOT be a part-time job\n"
         if eligibility.get("internship_year"):
             system_prompt += f"- Title or Description MUST explicitly include the year {eligibility.get('internship_year')}\n"
         if eligibility.get("graduation_year"):
