@@ -4,11 +4,13 @@ from ijt.logging import get_logger
 from ijt.tailor.prompt import SYSTEM_PROMPT, build_user_prompt
 from ijt.tailor.extractor import extract_keywords
 from ijt.tailor.validator import validate_resume_json, ValidationError
+from ijt.llm_server import ensure_ollama_server
 
 logger = get_logger("tailor.client")
 
 async def ollama_chat(messages: list[dict], config: dict) -> str:
     """Ollama API wrapper for stateless chat generation."""
+    await ensure_ollama_server(config)
     url = f"{config.get('ollama_host', 'http://localhost:11434')}/api/chat"
     payload = {
         "model": config.get("model", "llama3.3:70b-instruct-q4_0"),
