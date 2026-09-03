@@ -180,9 +180,30 @@ class HandshakeScraper(BaseScraper):
                 desc_clean = desc.split("Similar jobs")[0].split("Similar Jobs")[0]
                 desc_clean = desc_clean.split("About the employer")[0].split("About the Employer")[0]
                 
+                # Try to extract title and company from DOM
+                title = await page.evaluate("""() => {
+                    let h1 = document.querySelector('h1');
+                    if (h1 && h1.innerText) return h1.innerText;
+                    
+                    let parts = document.title.split('|');
+                    if (parts.length > 0) return parts[0].trim();
+                    
+                    return '';
+                }""")
+                company = await page.evaluate("""() => {
+                    let a = document.querySelector('a[href*="/employers/"]');
+                    if (a && a.innerText) return a.innerText;
+                    
+                    // Fallback to document.title, usually "Job Title | Company Name | Handshake"
+                    let parts = document.title.split('|');
+                    if (parts.length > 1) return parts[1].trim();
+                    
+                    return '';
+                }""")
+
                 job = ScrapedJob(
-                    title="", # Will be filled by CLI from prelim
-                    company="", 
+                    title=title.strip(), # Will be filled by CLI if empty
+                    company=company.strip(), 
                     location="",
                     url=url,
                     source=self.source,

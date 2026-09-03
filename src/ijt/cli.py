@@ -369,11 +369,28 @@ def tailor(target):
         click.echo(f"Processing single job from URL: {target}")
         
         async def process_url():
+            nonlocal target
+            import urllib.parse
+            import re
+            
+            # Sanitize LinkedIn URLs
             if "linkedin.com" in target:
+                parsed = urllib.parse.urlparse(target)
+                qs = urllib.parse.parse_qs(parsed.query)
+                if "currentJobId" in qs:
+                    job_id = qs["currentJobId"][0]
+                    target = f"https://www.linkedin.com/jobs/view/{job_id}/"
+                
                 from ijt.scrapers.linkedin import LinkedInScraper
                 session_dir = Path(config.scraper.get("linkedin", {}).get("session_dir", "data/sessions/linkedin_session"))
                 scraper = LinkedInScraper(session_dir)
             elif "joinhandshake.com" in target:
+                parsed = urllib.parse.urlparse(target)
+                match = re.search(r"/job-search/(\d+)", parsed.path)
+                if match:
+                    job_id = match.group(1)
+                    target = f"https://{parsed.netloc}/stu/jobs/{job_id}/"
+                    
                 from ijt.scrapers.handshake import HandshakeScraper
                 session_dir = Path(config.scraper.get("handshake", {}).get("session_dir", "data/sessions/handshake_session"))
                 school_url = config.scraper.get("handshake", {}).get("school_url", "https://app.joinhandshake.com")
@@ -382,9 +399,24 @@ def tailor(target):
                 click.echo("Error: Unsupported URL source. Must be LinkedIn or Handshake.")
                 return
 
-            click.echo("Fetching job details...")
+            click.echo(f"Fetching job details from {target} ...")
             full_job = await scraper.get_job_details(target)
             
+            db_path = Path("data/ijt.db")
+            job_id = generate_job_id(full_job.url)
+            
+            # Check for duplicates
+            db = await get_db_connection(db_path)
+            try:
+                from ijt.db.store import is_url_seen
+                if await is_url_seen(db, job_id):
+                    click.echo(f"Notice: This job ({full_job.url}) has already been tailored previously.")
+                    if not click.confirm("Do you want to re-tailor and overwrite it?"):
+                        click.echo("Aborted.")
+                        return
+            finally:
+                await db.close()
+                    
             if not full_job.title:
                 full_job.title = click.prompt("Could not automatically determine Job Title. Please enter it")
             if not full_job.company:
@@ -410,12 +442,13 @@ def tailor(target):
                 with open(job_dir / "job_info.json", "w", encoding="utf-8") as f:
                     json.dump(job_dict, f, indent=2)
                     
-                job_id = generate_job_id(full_job.url)
-                
-                db_path = Path("data/ijt.db")
+                # Save to DB
                 db = await get_db_connection(db_path)
                 try:
                     await save_job(db, job_id, full_job, folder_name, status='not_applied')
+                    # We should also mark the url as seen if it's the first time
+                    from ijt.db.store import mark_url_seen
+                    await mark_url_seen(db, job_id, full_job.url, full_job.source)
                 finally:
                     await db.close()
                     
