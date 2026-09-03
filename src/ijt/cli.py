@@ -156,11 +156,13 @@ def run(source, max_jobs, dry_run):
     asyncio.run(_run())
 
 @cli.command(name="open")
-@click.argument('application_folder')
-def open_cmd(application_folder):
-    """Open an application folder in Finder."""
+@click.argument('job_id_or_folder')
+def open_cmd(job_id_or_folder):
+    """Open an application folder in Finder using its short hash or folder name."""
     import subprocess
+    import asyncio
     from ijt.config import load_config
+    from ijt.db.store import get_db_connection
     
     config_path = Path("config.yaml")
     apps_dir = Path("applications")
@@ -169,14 +171,37 @@ def open_cmd(application_folder):
         if hasattr(config, "output") and "applications_dir" in config.output:
             apps_dir = Path(config.output["applications_dir"])
             
-    target_path = apps_dir / application_folder
-    
-    if not target_path.exists():
-        click.echo(f"Error: Application folder '{target_path}' does not exist.")
-        return
-        
-    click.echo(f"Opening {target_path} in Finder...")
-    subprocess.run(["open", str(target_path)])
+    async def _open():
+        db_path = Path("data/ijt.db")
+        if not db_path.exists():
+            click.echo("No database found.")
+            return
+
+        db = await get_db_connection(db_path)
+        try:
+            async with db.execute("SELECT folder_name FROM jobs WHERE short_hash = ? OR folder_name = ?", (job_id_or_folder, job_id_or_folder)) as cursor:
+                row = await cursor.fetchone()
+                
+            if not row:
+                click.echo(f"Error: Job with hash or folder '{job_id_or_folder}' not found in database.")
+                return
+                
+            folder_name = row[0]
+            if not folder_name:
+                click.echo(f"Error: Job '{job_id_or_folder}' has no associated folder.")
+                return
+                
+            target_path = apps_dir / folder_name
+            if not target_path.exists():
+                click.echo(f"Error: Application folder '{target_path}' does not exist.")
+                return
+                
+            click.echo(f"Opening {target_path} in Finder...")
+            subprocess.run(["open", str(target_path)])
+        finally:
+            await db.close()
+
+    asyncio.run(_open())
 
 @cli.command(name="list")
 @click.option('--sort', type=click.Choice(['deadline', 'relevance']), default='deadline', help="Sort order")
@@ -197,7 +222,7 @@ def list_cmd(sort, filter_status):
 
         db = await get_db_connection(db_path)
         try:
-            query = "SELECT company, title, status, deadline_year, deadline_month, relevance_score, folder_name FROM jobs"
+            query = "SELECT company, title, status, deadline_year, deadline_month, relevance_score, short_hash FROM jobs"
             params = []
             if filter_status:
                 query += " WHERE status = ?"
@@ -218,15 +243,15 @@ def list_cmd(sort, filter_status):
             console = Console()
             table = Table(title="IJT Tracked Applications")
 
+            table.add_column("Hash", style="bold red")
             table.add_column("Company", style="cyan")
             table.add_column("Title", style="magenta")
             table.add_column("Status", style="green")
             table.add_column("Deadline", justify="right")
             table.add_column("Score", justify="right", style="yellow")
-            table.add_column("Folder")
 
             for row in rows:
-                company, title, job_status, year, month, score, folder = row
+                company, title, job_status, year, month, score, short_hash = row
                 
                 if year and month:
                     deadline_str = f"{year}-{month:02d}"
@@ -238,7 +263,7 @@ def list_cmd(sort, filter_status):
                 score_str = f"{score:.2f}" if score is not None else "N/A"
                 
                 table.add_row(
-                    company, title, job_status, deadline_str, score_str, folder or ""
+                    short_hash or "", company, title, job_status, deadline_str, score_str
                 )
             
             console.print(table)
@@ -248,9 +273,9 @@ def list_cmd(sort, filter_status):
     asyncio.run(_list())
 
 @cli.command()
-@click.argument('application_folder')
-@click.argument('status')
-def status(application_folder, status):
+@click.argument('job_id_or_folder')
+@click.argument('status_value')
+def status(job_id_or_folder, status_value):
     """Update application status."""
     import asyncio
     from pathlib import Path
@@ -264,17 +289,17 @@ def status(application_folder, status):
 
         db = await get_db_connection(db_path)
         try:
-            async with db.execute("SELECT id FROM jobs WHERE folder_name = ?", (application_folder,)) as cursor:
+            async with db.execute("SELECT id FROM jobs WHERE short_hash = ? OR folder_name = ?", (job_id_or_folder, job_id_or_folder)) as cursor:
                 row = await cursor.fetchone()
                 
             if not row:
-                click.echo(f"Error: Application folder '{application_folder}' not found in database.")
+                click.echo(f"Error: Job '{job_id_or_folder}' not found in database.")
                 return
                 
             job_id = row[0]
-            await db.execute("UPDATE jobs SET status = ? WHERE id = ?", (status, job_id))
+            await db.execute("UPDATE jobs SET status = ? WHERE id = ?", (status_value, job_id))
             await db.commit()
-            click.echo(f"Successfully updated '{application_folder}' status to '{status}'.")
+            click.echo(f"Successfully updated '{job_id_or_folder}' status to '{status_value}'.")
         finally:
             await db.close()
 

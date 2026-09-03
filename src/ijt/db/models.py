@@ -14,6 +14,7 @@ class Job:
     deadline_year: Optional[int] = None
     status: str = 'not_applied'
     folder_name: Optional[str] = None
+    short_hash: Optional[str] = None
     relevance_score: Optional[float] = None
     matched_keywords: Optional[str] = None
 

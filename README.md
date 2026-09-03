@@ -65,7 +65,8 @@ uv run ijt scrape --source linkedin --max 10
 ```
 
 ### Application Tracking
-Track your job applications locally in the SQLite database.
+Track your job applications locally in the SQLite database. Each job is assigned a unique 2-character short hash (e.g., `jr`) for quick and easy CLI access.
+
 ```bash
 # View tracked applications as a rich table
 uv run ijt list
@@ -77,11 +78,11 @@ uv run ijt list --sort deadline
 # Filter applications
 uv run ijt list --status not_applied
 
-# Update an application's status
-uv run ijt status Google_SWE_Intern_2026 applied
+# Update an application's status using its short hash (or full folder name)
+uv run ijt status jr applied
 
-# Open application folder in Finder
-uv run ijt open Google_SWE_Intern_2026
+# Open an application folder in Finder using its short hash (or full folder name)
+uv run ijt open jr
 
 # Remove unapplied applications from DB and delete their folders
 uv run ijt prune

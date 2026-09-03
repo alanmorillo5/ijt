@@ -19,6 +19,7 @@ async def init_db(db_path: Path):
                 date_tailored TIMESTAMP,
                 status TEXT DEFAULT 'not_applied',
                 folder_name TEXT,
+                short_hash TEXT,
                 relevance_score REAL,
                 matched_keywords TEXT
             )
@@ -31,6 +32,13 @@ async def init_db(db_path: Path):
                 first_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        
+        try:
+            await db.execute("ALTER TABLE jobs ADD COLUMN short_hash TEXT")
+        except aiosqlite.OperationalError:
+            pass
+            
+        await db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_short_hash ON jobs(short_hash)")
         
         await db.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_jobs_source ON jobs(source)")
@@ -53,16 +61,42 @@ async def mark_url_seen(db: aiosqlite.Connection, url_hash: str, url: str, sourc
     )
     await db.commit()
 
+async def get_or_create_short_hash(db: aiosqlite.Connection, job_id: str) -> str:
+    import string
+    import random
+    
+    # Check if exists
+    async with db.execute("SELECT short_hash FROM jobs WHERE id = ?", (job_id,)) as cursor:
+        row = await cursor.fetchone()
+        if row and row[0]:
+            return row[0]
+            
+    chars = string.ascii_letters + string.digits
+    while True:
+        short_hash = "".join(random.choices(chars, k=2))
+        try:
+            # We don't insert here, just verify it's not taken.
+            # It could theoretically race, but for a local CLI it's fine.
+            async with db.execute("SELECT 1 FROM jobs WHERE short_hash = ?", (short_hash,)) as cursor:
+                if not await cursor.fetchone():
+                    return short_hash
+        except aiosqlite.Error:
+            pass
+
 async def save_job(db: aiosqlite.Connection, job_id: str, job, folder_name: str, status: str = 'not_applied'):
     import json
     matched_keywords_json = json.dumps(job.matched_keywords) if job.matched_keywords else "[]"
+    
+    short_hash = await get_or_create_short_hash(db, job_id)
+    job.short_hash = short_hash
+    
     await db.execute("""
         INSERT OR REPLACE INTO jobs 
-        (id, title, company, location, url, source, description, deadline_month, deadline_year, folder_name, relevance_score, matched_keywords, status) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, title, company, location, url, source, description, deadline_month, deadline_year, folder_name, short_hash, relevance_score, matched_keywords, status) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         job_id, job.title, job.company, job.location, job.url, job.source, 
-        job.description, job.deadline_month, job.deadline_year, folder_name, 
+        job.description, job.deadline_month, job.deadline_year, folder_name, short_hash,
         job.relevance_score, matched_keywords_json, status
     ))
     await db.commit()
