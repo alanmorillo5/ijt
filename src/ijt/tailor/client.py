@@ -13,7 +13,7 @@ async def ollama_chat(messages: list[dict], config: dict) -> str:
     await ensure_ollama_server(config)
     url = f"{config.get('ollama_host', 'http://localhost:11434')}/api/chat"
     payload = {
-        "model": config.get("model", "llama3.3:70b-instruct-q4_0"),
+        "model": config.get("model", "qwen3.8:27b-mtp-q4_K_M"),
         "messages": messages,
         "stream": False,
         "options": {

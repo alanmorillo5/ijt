@@ -43,7 +43,7 @@ sources:
         school_url: "https://university.joinhandshake.com"
 
 llm:
-  model: "llama3.3:70b-instruct-q4_0"
+  model: "qwen3.8:27b-mtp-q4_K_M"
   ollama_host: "http://localhost:11434"
   temperature: 0.3                      # low temp for consistent resume writing
   max_tokens: 8192
