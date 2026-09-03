@@ -337,15 +337,18 @@ def resume(preview):
 
 
 @cli.command()
-@click.argument('job_file', type=click.Path(exists=True))
-def tailor(job_file):
-    """Tailor resume for a job using the provided job description file."""
+@click.argument('target')
+def tailor(target):
+    """Tailor resume for a job using the provided job description file or a URL."""
     import json
     import asyncio
+    from pathlib import Path
+    from dataclasses import asdict
     from ijt.config import load_config
     from ijt.tailor.client import tailor_for_job
-    
-    click.echo(f"Tailoring resume for job in {job_file}...")
+    from ijt.db.store import get_db_connection, save_job
+    from ijt.pipeline import get_folder_name, generate_job_id
+    from ijt.renderer.pdf import render_resume_to_pdf
     
     config_path = Path("config.yaml")
     if not config_path.exists():
@@ -361,21 +364,88 @@ def tailor(job_file):
         
     with open(resume_path, "r", encoding="utf-8") as f:
         resume_data = json.load(f)
+
+    if target.startswith("http://") or target.startswith("https://"):
+        click.echo(f"Processing single job from URL: {target}")
         
-    with open(job_file, "r", encoding="utf-8") as f:
-        job_data = json.load(f)
-        
-    # Run tailor
-    try:
-        result = asyncio.run(tailor_for_job(resume_data, job_data, config.llm))
-        
-        output_file = Path("tailored_resume.json")
-        with open(output_file, "w", encoding="utf-8") as f:
-            json.dump(result, f, indent=2)
+        async def process_url():
+            if "linkedin.com" in target:
+                from ijt.scrapers.linkedin import LinkedInScraper
+                session_dir = Path(config.scraper.get("linkedin", {}).get("session_dir", "data/sessions/linkedin_session"))
+                scraper = LinkedInScraper(session_dir)
+            elif "joinhandshake.com" in target:
+                from ijt.scrapers.handshake import HandshakeScraper
+                session_dir = Path(config.scraper.get("handshake", {}).get("session_dir", "data/sessions/handshake_session"))
+                school_url = config.scraper.get("handshake", {}).get("school_url", "https://app.joinhandshake.com")
+                scraper = HandshakeScraper(session_dir, school_url)
+            else:
+                click.echo("Error: Unsupported URL source. Must be LinkedIn or Handshake.")
+                return
+
+            click.echo("Fetching job details...")
+            full_job = await scraper.get_job_details(target)
             
-        click.echo(f"Tailored resume saved to {output_file}")
-    except Exception as e:
-        click.echo(f"Error during tailoring: {e}")
+            if not full_job.title:
+                full_job.title = click.prompt("Could not automatically determine Job Title. Please enter it")
+            if not full_job.company:
+                full_job.company = click.prompt("Could not automatically determine Company Name. Please enter it")
+                
+            job_dict = asdict(full_job)
+            
+            click.echo(f"Tailoring resume for {full_job.company} - {full_job.title}...")
+            try:
+                tailored_resume = await tailor_for_job(resume_data, job_dict, config.llm)
+                
+                # Render PDF and Save
+                apps_dir = Path(config.output.get("applications_dir", "./applications")) if hasattr(config, "output") else Path("./applications")
+                apps_dir.mkdir(parents=True, exist_ok=True)
+                
+                folder_name = get_folder_name(full_job)
+                job_dir = apps_dir / folder_name
+                job_dir.mkdir(parents=True, exist_ok=True)
+                
+                pdf_path = job_dir / "resume.pdf"
+                render_resume_to_pdf(tailored_resume, Path("templates"), pdf_path)
+                
+                with open(job_dir / "job_info.json", "w", encoding="utf-8") as f:
+                    json.dump(job_dict, f, indent=2)
+                    
+                job_id = generate_job_id(full_job.url)
+                
+                db_path = Path("data/ijt.db")
+                db = await get_db_connection(db_path)
+                try:
+                    await save_job(db, job_id, full_job, folder_name, status='not_applied')
+                finally:
+                    await db.close()
+                    
+                click.echo(f"Success! Application saved to {job_dir}")
+                
+            except Exception as e:
+                click.echo(f"Error during tailoring: {e}")
+                
+        asyncio.run(process_url())
+    else:
+        # File path logic
+        job_file = Path(target)
+        if not job_file.exists():
+            click.echo(f"Error: File {job_file} not found.")
+            return
+            
+        click.echo(f"Tailoring resume for job in {job_file}...")
+        with open(job_file, "r", encoding="utf-8") as f:
+            job_data = json.load(f)
+            
+        try:
+            result = asyncio.run(tailor_for_job(resume_data, job_data, config.llm))
+            
+            output_file = Path("tailored_resume.json")
+            with open(output_file, "w", encoding="utf-8") as f:
+                json.dump(result, f, indent=2)
+                
+            click.echo(f"Tailored resume saved to {output_file}")
+        except Exception as e:
+            click.echo(f"Error during tailoring: {e}")
 
 @cli.command()
 def prune():

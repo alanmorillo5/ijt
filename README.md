@@ -64,6 +64,16 @@ uv run ijt scrape
 uv run ijt scrape --source linkedin --max 10
 ```
 
+### Tailoring Specific Jobs
+Tailor your resume for a specific job by providing a direct URL to a LinkedIn or Handshake job posting, or a path to a local job JSON file.
+```bash
+# Tailor using a direct job URL (make sure to wrap URLs in quotes)
+uv run ijt tailor "https://www.linkedin.com/jobs/view/..."
+
+# Tailor using a local job JSON file
+uv run ijt tailor path/to/job_file.json
+```
+
 ### Application Tracking
 Track your job applications locally in the SQLite database. Each job is assigned a unique 2-character short hash (e.g., `jr`) for quick and easy CLI access.
 
