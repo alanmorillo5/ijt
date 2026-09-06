@@ -179,7 +179,7 @@ def open_cmd(job_id_or_folder):
 
         db = await get_db_connection(db_path)
         try:
-            async with db.execute("SELECT folder_name FROM jobs WHERE short_hash = ? OR folder_name = ?", (job_id_or_folder, job_id_or_folder)) as cursor:
+            async with db.execute("SELECT folder_name, url FROM jobs WHERE short_hash = ? OR folder_name = ?", (job_id_or_folder, job_id_or_folder)) as cursor:
                 row = await cursor.fetchone()
                 
             if not row:
@@ -187,6 +187,7 @@ def open_cmd(job_id_or_folder):
                 return
                 
             folder_name = row[0]
+            url = row[1]
             if not folder_name:
                 click.echo(f"Error: Job '{job_id_or_folder}' has no associated folder.")
                 return
@@ -198,6 +199,10 @@ def open_cmd(job_id_or_folder):
                 
             click.echo(f"Opening {target_path} in Finder...")
             subprocess.run(["open", str(target_path)])
+            
+            if url:
+                click.echo(f"Opening URL: {url}")
+                subprocess.run(["open", url])
         finally:
             await db.close()
 
