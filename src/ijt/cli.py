@@ -7,7 +7,14 @@ from ijt.db.store import init_db
 @click.group()
 def cli():
     """IJT — Intern Jobscraping & Tailoring"""
-    pass
+    import os
+    import subprocess
+    # Prevent the system from idle sleeping while the CLI is running
+    subprocess.Popen(
+        ["caffeinate", "-i", "-w", str(os.getpid())],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 @cli.command()
 def init():
