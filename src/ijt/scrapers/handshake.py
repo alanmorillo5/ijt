@@ -201,9 +201,16 @@ class HandshakeScraper(BaseScraper):
                     return '';
                 }""")
 
+                title = title.strip()
+                company = company.strip()
+                
+                if title == "Jobs" and company == "Handshake":
+                    title = ""
+                    company = ""
+
                 job = ScrapedJob(
-                    title=title.strip(), # Will be filled by CLI if empty
-                    company=company.strip(), 
+                    title=title, # Will be filled by CLI if empty
+                    company=company, 
                     location="",
                     url=url,
                     source=self.source,
